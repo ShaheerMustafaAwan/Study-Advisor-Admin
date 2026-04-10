@@ -1,11 +1,20 @@
 "use client";
 
 import { User, GraduationCap, School, Settings, FileText } from "lucide-react";
-import { useAdminStore } from "@/app/store/useAdminStore";
 import { useState } from "react";
 
-export default function RecentActivity() {
-  const { activities } = useAdminStore();
+type ActivityItem = {
+  id: string;
+  type: "Student" | "Counselor" | "University" | "System" | "Document";
+  message: string;
+  time: string;
+};
+
+type RecentActivityProps = {
+  activities: ActivityItem[];
+};
+
+export default function RecentActivity({ activities }: RecentActivityProps) {
   const [showAll, setShowAll] = useState(false);
 
   const displayedActivities = showAll ? activities : activities.slice(0, 5);

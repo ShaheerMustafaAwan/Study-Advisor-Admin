@@ -24,21 +24,52 @@
 // }
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminHeader from "./Header";
 import AdminSidebar from "./Sidebar";
+import {
+  clearAdminAuthToken,
+  getAdminAuthToken,
+  hasAdminSession,
+} from "@/app/libs/adminAuth";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const token = getAdminAuthToken();
+    if (!hasAdminSession(token)) {
+      clearAdminAuthToken();
+      router.replace("/login");
+      return;
+    }
+
+    setCheckingAuth(false);
+  }, [router]);
+
+  const handleLogout = () => {
+    clearAdminAuthToken();
+    router.replace("/login");
+  };
+
+  if (checkingAuth) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-100">
       {/* HEADER (Full Width) */}
-      <AdminHeader onToggleSidebar={() => setCollapsed(!collapsed)} />
+      <AdminHeader
+        onToggleSidebar={() => setCollapsed(!collapsed)}
+        onLogout={handleLogout}
+      />
 
       {/* BODY */}
       <div className="flex flex-1 overflow-hidden">

@@ -1,38 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { useAdminStore } from "@/app/store/useAdminStore";
+import { AdminCounselor, AdminStudent } from "@/app/libs/adminApi";
 
-export default function StudentAssignments() {
-  const { counselors, students } = useAdminStore();
-  const getLoad = (name: string) =>
-    students.filter((s) => s.assigned === name).length;
+type StudentAssignmentsProps = {
+  counselors: AdminCounselor[];
+  students: AdminStudent[];
+  onAssign: (student: AdminStudent, counselorId: number) => Promise<void>;
+  onUnassign: (student: AdminStudent) => Promise<void>;
+};
 
+export default function StudentAssignments({
+  counselors,
+  students,
+  onAssign,
+  onUnassign,
+}: StudentAssignmentsProps) {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [pendingStudentId, setPendingStudentId] = useState<number | null>(null);
 
-  // ✅ Move Zustand hooks inside component
-  // const students = useAdminStore((state) => state.students);
-  // const counselors = useAdminStore((state) => state.counselors);
-  const assignStudent = useAdminStore((state) => state.assignStudent);
+  const filteredStudents = useMemo(
+    () =>
+      students.filter((student) => {
+        const matchesSearch =
+          student.name.toLowerCase().includes(search.toLowerCase()) ||
+          student.program.toLowerCase().includes(search.toLowerCase()) ||
+          student.location.toLowerCase().includes(search.toLowerCase());
 
-  // 🔎 FILTER + SEARCH
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch =
-      student.name.toLowerCase().includes(search.toLowerCase()) ||
-      student.program.toLowerCase().includes(search.toLowerCase()) ||
-      student.location.toLowerCase().includes(search.toLowerCase());
+        const matchesFilter =
+          filter === "All"
+            ? true
+            : filter === "Assigned"
+              ? !!student.assignedCounselor
+              : !student.assignedCounselor;
 
-    const matchesFilter =
-      filter === "All"
-        ? true
-        : filter === "Assigned"
-          ? student.assigned !== null
-          : student.assigned === null;
+        return matchesSearch && matchesFilter;
+      }),
+    [students, search, filter],
+  );
 
-    return matchesSearch && matchesFilter;
-  });
+  const handleAssignmentChange = async (
+    student: AdminStudent,
+    value: string,
+  ) => {
+    if (!value) {
+      if (!student.assignedCounselor) return;
+      setPendingStudentId(student.id);
+      try {
+        await onUnassign(student);
+      } finally {
+        setPendingStudentId(null);
+      }
+      return;
+    }
+
+    const counselorId = Number(value);
+    if (Number.isNaN(counselorId)) return;
+
+    setPendingStudentId(student.id);
+    try {
+      await onAssign(student, counselorId);
+    } finally {
+      setPendingStudentId(null);
+    }
+  };
 
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
@@ -43,7 +76,6 @@ export default function StudentAssignments() {
         </p>
       </div>
 
-      {/* Search + Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative w-full">
           <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
@@ -67,7 +99,6 @@ export default function StudentAssignments() {
         </select>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-left text-slate-400 border-b border-slate-100">
@@ -90,12 +121,12 @@ export default function StudentAssignments() {
                 <td className="py-4 font-medium">{student.name}</td>
                 <td>{student.program}</td>
                 <td>{student.location}</td>
-                <td>{student.date}</td>
+                <td>{new Date(student.date).toISOString().slice(0, 10)}</td>
 
                 <td>
-                  {student.assigned ? (
+                  {student.assignedCounselor ? (
                     <span className="text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs">
-                      {student.assigned}
+                      {student.assignedCounselor.name}
                     </span>
                   ) : (
                     <span className="text-slate-500 bg-slate-100 px-3 py-1 rounded-full text-xs">
@@ -106,17 +137,18 @@ export default function StudentAssignments() {
 
                 <td>
                   <select
-                    onChange={(e) => assignStudent(student.id, e.target.value)}
-                    value={student.assigned || ""}
+                    disabled={pendingStudentId === student.id}
+                    onChange={(e) =>
+                      handleAssignmentChange(student, e.target.value)
+                    }
+                    value={student.assignedCounselor?.id || ""}
                     className="border border-slate-200 rounded-lg px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
-                    <option value="" disabled>
-                      {student.assigned ? "Reassign..." : "Assign..."}
-                    </option>
+                    <option value="">Unassign</option>
 
                     {counselors.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name} ({1}/{c.capacity})
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.assignedStudents}/{c.capacity})
                       </option>
                     ))}
                   </select>

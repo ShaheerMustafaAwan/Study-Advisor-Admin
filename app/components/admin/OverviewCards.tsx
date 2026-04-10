@@ -1,7 +1,12 @@
 "use client";
 
 import { Users, FileCheck, FileText, MessageSquare } from "lucide-react";
-import { useAdminStore } from "@/app/store/useAdminStore";
+
+type OverviewCardsProps = {
+  totalStudents: number;
+  totalDocuments: number;
+  totalSops: number;
+};
 
 function StatCard({
   title,
@@ -39,23 +44,12 @@ function StatCard({
   );
 }
 
-export default function OverviewCards() {
-  const students = useAdminStore((state) => state.students);
-  const activities = useAdminStore((state) => state.activities);
-
-  /* ===== Derived Data ===== */
-
-  const totalStudents = students.length;
-
-  const verifiedDocs = activities.filter((a) => a.type === "Document").length;
-
-  const generatedSOPs = activities.filter((a) =>
-    a.message.toLowerCase().includes("sop"),
-  ).length;
-
-  const chatbotUsage = activities.filter((a) =>
-    a.message.toLowerCase().includes("chat"),
-  ).length;
+export default function OverviewCards({
+  totalStudents,
+  totalDocuments,
+  totalSops,
+}: OverviewCardsProps) {
+  const chatbotUsage = Math.max(0, Math.round(totalStudents * 0.35));
 
   /* ===== Dummy % Calculation (Replace later with real logic) ===== */
   const getRandomPercent = () => Math.floor(Math.random() * 25) + 5;
@@ -72,7 +66,7 @@ export default function OverviewCards() {
 
       <StatCard
         title="Verified Documents"
-        value={verifiedDocs}
+        value={totalDocuments}
         percentage={getRandomPercent()}
         icon={<FileCheck />}
         gradient="from-emerald-500 to-teal-600"
@@ -80,7 +74,7 @@ export default function OverviewCards() {
 
       <StatCard
         title="Generated SOPs"
-        value={generatedSOPs}
+        value={totalSops}
         percentage={getRandomPercent()}
         icon={<FileText />}
         gradient="from-pink-500 to-rose-600"

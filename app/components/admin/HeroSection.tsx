@@ -1,16 +1,18 @@
 "use client";
 
-import { useAdminStore } from "@/app/store/useAdminStore";
+type HeroSectionProps = {
+  totalStudents: number;
+  totalCounselors: number;
+  totalUniversities: number;
+  totalApplications: number;
+};
 
-export default function AdminHero() {
-  const { students, counselors, universities } = useAdminStore();
-
-  const totalStudents = students.length;
-  const totalCounselors = counselors.length;
-  const totalUniversities = universities.length;
-
-  const totalApplications = students.filter((s) => s.assigned !== null).length;
-
+export default function AdminHero({
+  totalStudents,
+  totalCounselors,
+  totalUniversities,
+  totalApplications,
+}: HeroSectionProps) {
   return (
     <div className="bg-linear-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 sm:p-8 text-white shadow-md">
       {/* HEADER */}

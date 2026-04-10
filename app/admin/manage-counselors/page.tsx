@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAdminStore } from "@/app/store/useAdminStore";
+import { useEffect, useMemo, useState } from "react";
 import {
   Users,
   Mail,
@@ -12,80 +11,40 @@ import {
   GraduationCapIcon,
 } from "lucide-react";
 import AdminStatCard from "@/app/components/admin/AdminStatCard";
+import { AdminCounselor, adminApi } from "@/app/libs/adminApi";
+
+type CounselorForm = {
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  capacity: number;
+  skills: string[];
+  isActive: boolean;
+};
+
+const initialForm: CounselorForm = {
+  fullName: "",
+  email: "",
+  password: "",
+  phone: "",
+  capacity: 20,
+  skills: [],
+  isActive: true,
+};
 
 export default function ManageCounselors() {
-  const {
-    counselors,
-    students,
-    addCounselor,
-    deleteCounselor,
-    updateCounselor,
-  } = useAdminStore();
-
-  /* ---------- MODAL + EDIT STATE ---------- */
-
+  const [counselors, setCounselors] = useState<AdminCounselor[]>([]);
+  const [studentSummary, setStudentSummary] = useState({
+    total: 0,
+    assigned: 0,
+    unassigned: 0,
+  });
   const [open, setOpen] = useState(false);
-  const [editingCounselor, setEditingCounselor] = useState<any | null>(null);
-
-  const initialForm = {
-    name: "",
-    email: "",
-    phone: "",
-    capacity: 20,
-    skills: [] as string[],
-  };
-
-  const [form, setForm] = useState(initialForm);
-
-  /* ---------- PREFILL WHEN EDITING ---------- */
-
-  useEffect(() => {
-    if (editingCounselor) {
-      setForm(editingCounselor);
-    } else {
-      setForm(initialForm);
-    }
-  }, [editingCounselor]);
-
-  /* ---------- STATS ---------- */
-
-  const activeCounselors = counselors.length;
-  const totalStudents = students.length;
-
-  const avgCapacity =
-    counselors.length > 0
-      ? Math.round(
-          (students.filter((s) => s.assigned).length /
-            counselors.reduce((acc, c) => acc + c.capacity, 0)) *
-            100,
-        )
-      : 0;
-
-  const totalApplications = students.length * 2;
-
-  /* ---------- HANDLERS ---------- */
-
-  const handleEdit = (counselor: any) => {
-    setEditingCounselor(counselor);
-    setOpen(true);
-  };
-
-  const handleSubmit = () => {
-    if (!form.name || form.skills.length === 0) return;
-
-    if (editingCounselor) {
-      updateCounselor(editingCounselor.id, form);
-    } else {
-      addCounselor({
-        id: Date.now(),
-        ...form,
-        joined: new Date().toISOString().split("T")[0],
-      });
-    }
-
-    setOpen(false);
-    setEditingCounselor(null);
-  };
+  const [editingCounselor, setEditingCounselor] =
+    useState<AdminCounselor | null>(null);
+  const [form, setForm] = useState<CounselorForm>(initialForm);
+  const [saving, setSaving] = useState(false);
 
   const specializations = [
     "Computer Science",
@@ -98,12 +57,149 @@ export default function ManageCounselors() {
     "Environmental Science",
   ];
 
-  const getLoad = (name: string) =>
-    students.filter((s) => s.assigned === name).length;
+  const loadData = async () => {
+    try {
+      const [counselorRes, studentRes] = await Promise.all([
+        adminApi.getCounselors(),
+        adminApi.getStudents(),
+      ]);
+
+      setCounselors(counselorRes.counselors || []);
+      setStudentSummary(
+        studentRes.summary || { total: 0, assigned: 0, unassigned: 0 },
+      );
+    } catch (error) {
+      console.error("Failed to load counselors:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to load counselors",
+      );
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!editingCounselor) {
+      setForm(initialForm);
+      return;
+    }
+
+    setForm({
+      fullName: editingCounselor.name,
+      email: editingCounselor.email,
+      password: "",
+      phone: editingCounselor.phone || "",
+      capacity: editingCounselor.capacity || 20,
+      skills: editingCounselor.skills || [],
+      isActive: editingCounselor.isActive,
+    });
+  }, [editingCounselor]);
+
+  const stats = useMemo(() => {
+    const activeCounselors = counselors.filter((c) => c.isActive).length;
+    const avgCapacity = counselors.length
+      ? Math.round(
+          counselors.reduce((acc, counselor) => {
+            const cap = counselor.capacity || 20;
+            if (!cap) return acc;
+            return acc + (counselor.assignedStudents / cap) * 100;
+          }, 0) / counselors.length || 0,
+        )
+      : 0;
+
+    return {
+      activeCounselors,
+      totalStudents: studentSummary.total,
+      avgCapacity,
+      totalApplications: studentSummary.assigned,
+    };
+  }, [counselors, studentSummary]);
+
+  const handleEdit = (counselor: AdminCounselor) => {
+    setEditingCounselor(counselor);
+    setOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (
+      !form.fullName.trim() ||
+      !form.email.trim() ||
+      form.skills.length === 0
+    ) {
+      alert("Name, email and at least one specialization are required");
+      return;
+    }
+
+    if (!editingCounselor && form.password.trim().length < 6) {
+      alert("Please provide at least 6 characters for counselor password");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (editingCounselor) {
+        const payload: Record<string, unknown> = {
+          fullName: form.fullName,
+          email: form.email,
+          phone: form.phone,
+          capacity: form.capacity,
+          skills: form.skills,
+          isActive: form.isActive,
+        };
+
+        if (form.password.trim()) {
+          payload.password = form.password.trim();
+        }
+
+        await adminApi.updateCounselor(editingCounselor.id, payload);
+      } else {
+        await adminApi.createCounselor({
+          fullName: form.fullName,
+          email: form.email,
+          password: form.password,
+          phone: form.phone,
+          capacity: form.capacity,
+          skills: form.skills,
+          isActive: true,
+        });
+      }
+
+      setOpen(false);
+      setEditingCounselor(null);
+      setForm(initialForm);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to save counselor:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to save counselor",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (
+      !window.confirm("Disable this counselor and clear their assignments?")
+    ) {
+      return;
+    }
+
+    try {
+      await adminApi.deleteCounselor(id);
+      await loadData();
+    } catch (error) {
+      console.error("Failed to delete counselor:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to delete counselor",
+      );
+    }
+  };
 
   return (
     <div className="p-6 space-y-8">
-      {/* HEADER */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Manage Counselors</h1>
@@ -123,38 +219,36 @@ export default function ManageCounselors() {
         </button>
       </div>
 
-      {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <AdminStatCard
           title="Active Counselors"
-          value={activeCounselors}
+          value={stats.activeCounselors}
           icon={<Users className="w-8 h-8 text-green-600" />}
           valueColor="text-green-600"
         />
 
         <AdminStatCard
           title="Total Students"
-          value={totalStudents}
+          value={stats.totalStudents}
           icon={<GraduationCapIcon className="w-8 h-8 text-blue-600" />}
           valueColor="text-blue-600"
         />
 
         <AdminStatCard
           title="Avg Capacity Used"
-          value={`${avgCapacity}%`}
+          value={`${stats.avgCapacity}%`}
           icon={<BarChart3 className="w-8 h-8 text-purple-600" />}
           valueColor="text-purple-600"
         />
 
         <AdminStatCard
           title="Total Applications"
-          value={totalApplications}
+          value={stats.totalApplications}
           icon={<FileText className="w-8 h-8 text-orange-600" />}
           valueColor="text-orange-600"
         />
       </div>
 
-      {/* TABLE */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
         <h2 className="text-lg font-semibold m-4">Counselor List</h2>
 
@@ -172,8 +266,8 @@ export default function ManageCounselors() {
 
           <tbody>
             {counselors.map((c) => {
-              const load = getLoad(c.name);
-              const isActive = load < c.capacity;
+              const load = c.assignedStudents;
+              const isActive = c.isActive && load < c.capacity;
 
               return (
                 <tr
@@ -183,14 +277,14 @@ export default function ManageCounselors() {
                   <td className="p-4">
                     <div className="font-medium">{c.name}</div>
                     <div className="text-xs text-slate-400">
-                      Joined: {c.joined}
+                      Joined: {new Date(c.joined).toISOString().slice(0, 10)}
                     </div>
                   </td>
 
                   <td className="text-xs">
                     {c.email}
                     <br />
-                    {c.phone}
+                    {c.phone || "-"}
                   </td>
 
                   <td className="p-4">
@@ -218,7 +312,7 @@ export default function ManageCounselors() {
                           : "bg-red-100 text-red-600"
                       }`}
                     >
-                      {isActive ? "Active" : "Full"}
+                      {isActive ? "Active" : "Full/Inactive"}
                     </span>
                   </td>
 
@@ -241,7 +335,7 @@ export default function ManageCounselors() {
                       </button>
 
                       <button
-                        onClick={() => deleteCounselor(c.id)}
+                        onClick={() => handleDelete(c.id)}
                         className="p-2 rounded-lg hover:bg-red-100 text-red-500"
                       >
                         <Trash2 size={16} />
@@ -255,7 +349,6 @@ export default function ManageCounselors() {
         </table>
       </div>
 
-      {/* MODAL */}
       {open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-xl rounded-2xl p-6 space-y-5">
@@ -266,8 +359,8 @@ export default function ManageCounselors() {
             <input
               placeholder="Full Name"
               className="w-full border border-slate-200 p-2 rounded-lg"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
             />
 
             <input
@@ -278,10 +371,31 @@ export default function ManageCounselors() {
             />
 
             <input
+              placeholder={
+                editingCounselor ? "New password (optional)" : "Password"
+              }
+              type="password"
+              className="w-full border border-slate-200 p-2 rounded-lg"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+
+            <input
               placeholder="Phone"
               className="w-full border border-slate-200 p-2 rounded-lg"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+
+            <input
+              placeholder="Capacity"
+              type="number"
+              min={1}
+              className="w-full border border-slate-200 p-2 rounded-lg"
+              value={form.capacity}
+              onChange={(e) =>
+                setForm({ ...form, capacity: Number(e.target.value) || 20 })
+              }
             />
 
             <div>
@@ -330,8 +444,9 @@ export default function ManageCounselors() {
               </button>
 
               <button
+                disabled={saving}
                 onClick={handleSubmit}
-                className="px-4 py-2 rounded-lg bg-purple-600 text-white"
+                className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-60"
               >
                 {editingCounselor ? "Update Counselor" : "Add Counselor"}
               </button>

@@ -1,22 +1,21 @@
 "use client";
 
 import { Users, Clock, CheckCircle, UserPlus } from "lucide-react";
-import { useAdminStore } from "@/app/store/useAdminStore";
 import AdminStatCard from "./AdminStatCard";
 
-export default function StatsOverview() {
-  const { counselors, students } = useAdminStore();
+type StatsOverviewProps = {
+  totalStudents: number;
+  assignedStudents: number;
+  unassignedStudents: number;
+  activeCounselors: number;
+};
 
-  /* ---------- CALCULATIONS ---------- */
-
-  const totalStudents = students.length;
-
-  const assignedStudents = students.filter((s) => s.assigned !== null).length;
-
-  const unassignedStudents = students.filter((s) => s.assigned === null).length;
-
-  const activeCounselors = counselors.length;
-
+export default function StatsOverview({
+  totalStudents,
+  assignedStudents,
+  unassignedStudents,
+  activeCounselors,
+}: StatsOverviewProps) {
   const stats = [
     {
       title: "Total Students",

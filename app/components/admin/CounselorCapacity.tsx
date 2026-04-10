@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useAdminStore } from "@/app/store/useAdminStore";
+import { AdminCounselor } from "@/app/libs/adminApi";
 
-export default function CounselorCapacity() {
-  const { counselors, students } = useAdminStore();
+type CounselorCapacityProps = {
+  counselors: AdminCounselor[];
+};
 
-  const getLoad = (name: string) =>
-    students.filter((s) => s.assigned === name).length;
-
+export default function CounselorCapacity({
+  counselors,
+}: CounselorCapacityProps) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
       <div className="mb-6">
@@ -20,7 +20,7 @@ export default function CounselorCapacity() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {counselors.map((c) => {
-          const load = getLoad(c.name);
+          const load = c.assignedStudents;
           const percentage = (load / c.capacity) * 100;
 
           return (

@@ -11,16 +11,29 @@ import {
   Legend,
 } from "recharts";
 
-const data = [
-  { month: "Jan", students: 12, applications: 8, documents: 45 },
-  { month: "Feb", students: 18, applications: 15, documents: 67 },
-  { month: "Mar", students: 22, applications: 18, documents: 89 },
-  { month: "Apr", students: 28, applications: 25, documents: 98 },
-  { month: "May", students: 34, applications: 31, documents: 112 },
-  { month: "Jun", students: 42, applications: 38, documents: 128 },
-];
+type TrendItem = {
+  month: string;
+  students: number;
+  applications: number;
+  documents: number;
+};
 
-export default function MonthlyTrends() {
+type MonthlyTrendsProps = {
+  data: TrendItem[];
+};
+
+export default function MonthlyTrends({ data }: MonthlyTrendsProps) {
+  const chartData = data.length
+    ? data
+    : [
+        { month: "Jan", students: 0, applications: 0, documents: 0 },
+        { month: "Feb", students: 0, applications: 0, documents: 0 },
+        { month: "Mar", students: 0, applications: 0, documents: 0 },
+        { month: "Apr", students: 0, applications: 0, documents: 0 },
+        { month: "May", students: 0, applications: 0, documents: 0 },
+        { month: "Jun", students: 0, applications: 0, documents: 0 },
+      ];
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-8">
       {/* HEADER */}
@@ -34,7 +47,7 @@ export default function MonthlyTrends() {
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {data.map((item) => (
+        {chartData.map((item) => (
           <div
             key={item.month}
             className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 hover:shadow-md transition"
@@ -58,7 +71,7 @@ export default function MonthlyTrends() {
       {/* GRAPH */}
       <div className="h-350px w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="month" stroke="#64748b" />
             <YAxis stroke="#64748b" />
