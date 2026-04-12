@@ -1,4 +1,4 @@
-@import "tailwindcss";
+/* @import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -23,4 +23,43 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+} */
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  
+  /* 1. Define the actual values here */
+  --brand-primary: #2563eb; 
+  --brand-heading: #111827;
+  --brand-muted: #4b5563;
+}
+
+@theme {
+  /* 2. Map them so Tailwind recognizes 'text-brand-primary' */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-heading: var(--brand-heading);
+  --color-brand-muted: var(--brand-muted);
+}
+
+/* 3. Global overrides: This changes all pages at once */
+@layer base {
+  .text-blue-500, .text-blue-600, .text-brand-primary {
+    color: var(--brand-primary) !important;
+  }
+
+  .text-slate-500, .text-gray-600, .text-brand-muted {
+    color: var(--brand-muted) !important;
+  }
+
+  .text-slate-900, .text-gray-900, .text-brand-heading {
+    color: var(--brand-heading) !important;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
 }

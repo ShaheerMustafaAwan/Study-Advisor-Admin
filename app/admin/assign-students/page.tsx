@@ -88,7 +88,7 @@ export default function AssignStudentsPage() {
     <div className="space-y-8 lg:space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">Assign Students</h1>
-        <p className="text-slate-500 text-sm">
+        <p className="text-blue-500 text-sm">
           Assign new student leads to counselors
         </p>
       </div>
@@ -117,3 +117,4 @@ export default function AssignStudentsPage() {
     </div>
   );
 }
+
