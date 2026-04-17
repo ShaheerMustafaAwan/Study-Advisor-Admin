@@ -85,6 +85,63 @@ export type AdminStudent = {
   } | null;
 };
 
+export type AdminStudentDocument = {
+  id: number;
+  type: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedAt: string;
+};
+
+export type AdminStudentDetails = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  profile: {
+    phoneNumber: string | null;
+    nationality: string | null;
+    desiredProgram: string | null;
+    preferredCountry: string | null;
+    preferredIntake: string | null;
+    currentEducationLevel: string | null;
+    institutionName: string | null;
+    fieldOfStudy: string | null;
+    cgpa: number | null;
+    ieltsScore: number | null;
+    updatedAt: string | null;
+  };
+  assignedCounselor: {
+    assignmentId: number;
+    assignedAt: string;
+    name: string;
+    email: string;
+  } | null;
+  documents: AdminStudentDocument[];
+  latestSop: {
+    id: number;
+    version: number;
+    title: string | null;
+    status: string;
+    reviewNotes: string | null;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    updatedAt: string;
+    document: {
+      id: number;
+      fileName: string;
+      fileUrl: string;
+      createdAt: string;
+    } | null;
+    reviewer: {
+      id: number;
+      fullName: string;
+      email: string;
+    } | null;
+  } | null;
+};
+
 export type AdminUniversity = {
   id: number;
   name: string;
@@ -114,6 +171,14 @@ export type DashboardSummaryResponse = {
   documents: { total: number };
   sop: { total: number };
   applications: { total: number };
+  connections: { pendingRequests: number };
+};
+
+export type StudentsPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 };
 
 export type DashboardTrend = {
@@ -128,6 +193,40 @@ export type DashboardActivity = {
   type: "Student" | "Counselor" | "University" | "System" | "Document";
   message: string;
   time: string;
+  activityCode?: string;
+  actor?: {
+    name: string;
+    email: string | null;
+    role: string;
+  };
+  subject?: {
+    name: string;
+    email: string | null;
+    role: string;
+  } | null;
+  target?: {
+    name: string;
+    email: string | null;
+    role: string;
+  } | null;
+};
+
+export type AdminNotification = {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt: string | null;
+  studentId: number | null;
+  student: {
+    id: number;
+    fullName: string;
+    email: string;
+  } | null;
+  isConnectionRequest: boolean;
+  actionPath: string | null;
 };
 
 export const adminApi = {
@@ -162,6 +261,28 @@ export const adminApi = {
   getDashboardRecentActivity() {
     return request<{ activities: DashboardActivity[] }>(
       "/admin/dashboard/recent-activity",
+    );
+  },
+
+  getNotifications(params?: { unreadOnly?: boolean; limit?: number }) {
+    const search = new URLSearchParams();
+    if (params?.unreadOnly) search.set("unreadOnly", "true");
+    if (typeof params?.limit === "number") {
+      search.set("limit", String(params.limit));
+    }
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+
+    return request<{ unreadCount: number; notifications: AdminNotification[] }>(
+      `/admin/notifications${suffix}`,
+    );
+  },
+
+  markNotificationRead(notificationId: number) {
+    return request<{ status: string }>(
+      `/admin/notifications/${notificationId}/read`,
+      {
+        method: "PUT",
+      },
     );
   },
 
@@ -211,15 +332,28 @@ export const adminApi = {
     );
   },
 
-  getStudents(params?: { q?: string }) {
+  getStudents(params?: { q?: string; page?: number; limit?: number }) {
     const search = new URLSearchParams();
     if (params?.q) search.set("q", params.q);
+    if (typeof params?.page === "number") {
+      search.set("page", String(params.page));
+    }
+    if (typeof params?.limit === "number") {
+      search.set("limit", String(params.limit));
+    }
     const suffix = search.toString() ? `?${search.toString()}` : "";
 
     return request<{
       students: AdminStudent[];
       summary: { total: number; assigned: number; unassigned: number };
+      pagination: StudentsPagination;
     }>(`/admin/students${suffix}`);
+  },
+
+  getStudentDetails(studentId: number) {
+    return request<{ student: AdminStudentDetails }>(
+      `/admin/students/${studentId}/details`,
+    );
   },
 
   createAssignment(payload: {

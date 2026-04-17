@@ -66,8 +66,14 @@
 // }
 
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Menu, GraduationCap, LogOut } from "lucide-react";
+import {
+  adminApi,
+  AdminNotification,
+  formatRelativeTime,
+} from "@/app/libs/adminApi";
 
 interface AdminHeaderProps {
   onToggleSidebar: () => void;
@@ -78,7 +84,12 @@ export default function AdminHeader({
   onToggleSidebar,
   onLogout,
 }: AdminHeaderProps) {
+  const router = useRouter();
   const [adminName, setAdminName] = useState("Admin");
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Fetch dynamic name on mount
   useEffect(() => {
@@ -87,6 +98,53 @@ export default function AdminHeader({
       setAdminName(storedName);
     }
   }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const response = await adminApi.getNotifications({ limit: 20 });
+      setNotifications(response.notifications || []);
+      setUnreadCount(response.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to load admin notifications:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+
+    const interval = window.setInterval(() => {
+      loadNotifications();
+    }, 20_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const topNotifications = useMemo(
+    () => notifications.slice(0, 6),
+    [notifications],
+  );
+
+  const handleNotificationAction = async (item: AdminNotification) => {
+    try {
+      if (!item.isRead) {
+        await adminApi.markNotificationRead(item.id);
+      }
+
+      await loadNotifications();
+
+      if (item.actionPath) {
+        setDropdownOpen(false);
+        router.push(item.actionPath);
+      }
+    } catch (error) {
+      console.error("Failed to handle notification action:", error);
+    }
+  };
 
   // Helper to generate initials from name
   const getInitials = (name: string) => {
@@ -120,18 +178,89 @@ export default function AdminHeader({
 
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-4 sm:gap-6">
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition">
-          <Bell className="w-5 h-5 text-brand-muted" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            className="relative p-2 rounded-lg hover:bg-gray-100 transition"
+            aria-label="Notifications"
+          >
+            <Bell className="w-5 h-5 text-brand-muted" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-[360px] max-h-[420px] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-50">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-sm font-semibold text-brand-heading">
+                  Notifications
+                </p>
+                <button
+                  onClick={loadNotifications}
+                  className="text-xs text-brand-primary font-semibold hover:underline"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {loadingNotifications && (
+                <p className="px-4 py-4 text-sm text-slate-500">
+                  Loading notifications...
+                </p>
+              )}
+
+              {!loadingNotifications && topNotifications.length === 0 && (
+                <p className="px-4 py-4 text-sm text-slate-500">
+                  No notifications yet.
+                </p>
+              )}
+
+              {!loadingNotifications &&
+                topNotifications.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`px-4 py-3 border-b border-gray-100 ${
+                      item.isRead ? "bg-white" : "bg-blue-50"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-brand-heading">
+                      {item.title.replace("[CONNECT_REQUEST]", "").trim()}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {item.message}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {formatRelativeTime(item.createdAt)}
+                    </p>
+
+                    {item.isConnectionRequest && item.actionPath && (
+                      <button
+                        onClick={() => handleNotificationAction(item)}
+                        className="mt-2 px-3 py-1.5 rounded-md bg-brand-primary text-white text-xs font-semibold hover:opacity-90"
+                      >
+                        Assign Counselor
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-3 border-l pl-4 sm:pl-6 border-gray-200">
           <div className="w-9 h-9 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold text-sm shadow-sm">
             {getInitials(adminName)}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-bold text-brand-heading leading-tight">{adminName}</p>
-            <p className="text-[11px] uppercase tracking-wider text-brand-primary font-bold">Admin</p>
+            <p className="text-sm font-bold text-brand-heading leading-tight">
+              {adminName}
+            </p>
+            <p className="text-[11px] uppercase tracking-wider text-brand-primary font-bold">
+              Admin
+            </p>
           </div>
         </div>
 

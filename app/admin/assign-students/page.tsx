@@ -1,29 +1,74 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import StatsOverview from "@/app/components/admin/StatsOverview";
 import CounselorCapacity from "@/app/components/admin/CounselorCapacity";
 import StudentAssignments from "@/app/components/admin/StudentAssignments";
-import { AdminCounselor, AdminStudent, adminApi } from "@/app/libs/adminApi";
+import {
+  AdminCounselor,
+  AdminStudent,
+  adminApi,
+  StudentsPagination,
+} from "@/app/libs/adminApi";
+
+const STUDENTS_PAGE_LIMIT = 20;
 
 export default function AssignStudentsPage() {
+  const searchParams = useSearchParams();
   const [students, setStudents] = useState<AdminStudent[]>([]);
   const [counselors, setCounselors] = useState<AdminCounselor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [studentSummary, setStudentSummary] = useState({
+    total: 0,
+    assigned: 0,
+    unassigned: 0,
+  });
+  const [pagination, setPagination] = useState<StudentsPagination>({
+    page: 1,
+    limit: STUDENTS_PAGE_LIMIT,
+    total: 0,
+    totalPages: 1,
+  });
 
-  const loadData = async () => {
+  const focusStudentId = useMemo(() => {
+    const raw = searchParams.get("studentId");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [searchParams]);
+
+  const loadData = async (nextPage = 1) => {
     try {
       setLoading(true);
       const [studentsRes, counselorsRes] = await Promise.all([
-        adminApi.getStudents(),
+        adminApi.getStudents({ page: nextPage, limit: STUDENTS_PAGE_LIMIT }),
         adminApi.getCounselors(),
       ]);
 
+      const pageInfo = studentsRes.pagination || {
+        page: nextPage,
+        limit: STUDENTS_PAGE_LIMIT,
+        total: studentsRes.summary.total,
+        totalPages: 1,
+      };
+
+      setPage(pageInfo.page);
+      setPagination(pageInfo);
+      setStudentSummary(
+        studentsRes.summary || {
+          total: pageInfo.total,
+          assigned: 0,
+          unassigned: pageInfo.total,
+        },
+      );
       setStudents(studentsRes.students || []);
       setCounselors(counselorsRes.counselors || []);
     } catch (error) {
       console.error("Failed to load assignment data:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to load assignment data",
@@ -34,20 +79,13 @@ export default function AssignStudentsPage() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(1);
   }, []);
 
-  const summary = useMemo(() => {
-    const assigned = students.filter((s) => s.assignedCounselor).length;
-    const unassigned = students.length - assigned;
-
-    return {
-      total: students.length,
-      assigned,
-      unassigned,
-      counselors: counselors.filter((c) => c.isActive).length,
-    };
-  }, [students, counselors]);
+  const activeCounselorCount = useMemo(
+    () => counselors.filter((c) => c.isActive).length,
+    [counselors],
+  );
 
   const handleAssign = async (student: AdminStudent, counselorId: number) => {
     try {
@@ -58,10 +96,11 @@ export default function AssignStudentsPage() {
         await adminApi.createAssignment({ studentId: student.id, counselorId });
       }
 
-      await loadData();
+      await loadData(page);
+      toast.success("Student assignment updated");
     } catch (error) {
       console.error("Failed to assign student:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to assign student",
       );
     }
@@ -75,10 +114,11 @@ export default function AssignStudentsPage() {
       }
 
       await adminApi.deleteAssignment(assignmentId);
-      await loadData();
+      await loadData(page);
+      toast.success("Student unassigned successfully");
     } catch (error) {
       console.error("Failed to unassign student:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to unassign student",
       );
     }
@@ -100,10 +140,10 @@ export default function AssignStudentsPage() {
       ) : (
         <>
           <StatsOverview
-            totalStudents={summary.total}
-            assignedStudents={summary.assigned}
-            unassignedStudents={summary.unassigned}
-            activeCounselors={summary.counselors}
+            totalStudents={studentSummary.total}
+            assignedStudents={studentSummary.assigned}
+            unassignedStudents={studentSummary.unassigned}
+            activeCounselors={activeCounselorCount}
           />
           <CounselorCapacity counselors={counselors} />
           <StudentAssignments
@@ -111,10 +151,37 @@ export default function AssignStudentsPage() {
             students={students}
             onAssign={handleAssign}
             onUnassign={handleUnassign}
+            focusStudentId={focusStudentId}
           />
+
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-slate-600">
+              Showing page {pagination.page} of {pagination.totalPages} (
+              {pagination.total} students)
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => loadData(page - 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                disabled={page >= pagination.totalPages}
+                onClick={() => loadData(page + 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </>
       )}
     </div>
   );
 }
-

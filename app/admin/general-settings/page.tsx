@@ -26,7 +26,7 @@
 
 //   const handleSave = () => {
 //     console.log("Saved Settings:", settings);
-//     alert("Settings saved successfully!");
+//     toast.success("Settings saved successfully!");
 //   };
 
 //   const handleReset = () => {
@@ -158,11 +158,11 @@
 //   );
 // }
 
-
 "use client";
 
 import { useState } from "react";
 import { Save, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 export default function GeneralSettingsPage() {
   const defaultSettings = {
@@ -187,7 +187,7 @@ export default function GeneralSettingsPage() {
 
   const handleSave = () => {
     console.log("Saved Settings:", settings);
-    alert("Settings saved successfully!");
+    toast.success("Settings saved successfully!");
   };
 
   const handleReset = () => {
@@ -199,7 +199,9 @@ export default function GeneralSettingsPage() {
       {/* Page Header */}
       <div className="mb-8">
         {/* Using brand-heading color */}
-        <h1 className="text-3xl font-bold text-brand-heading">General Settings</h1>
+        <h1 className="text-3xl font-bold text-brand-heading">
+          General Settings
+        </h1>
         <p className="text-brand-muted mt-2">
           Manage platform configuration and preferences.
         </p>
@@ -284,7 +286,9 @@ export default function GeneralSettingsPage() {
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
             <div>
-              <h3 className="font-medium text-brand-heading">Enable Auto Assignment</h3>
+              <h3 className="font-medium text-brand-heading">
+                Enable Auto Assignment
+              </h3>
               <p className="text-sm text-brand-muted">
                 Automatically assign students to counselors.
               </p>

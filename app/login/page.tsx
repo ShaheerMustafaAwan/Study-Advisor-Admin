@@ -149,9 +149,9 @@ export default function AdminLoginPage() {
 
       // 1. Save Token
       setAdminAuthToken(response.token);
-      
+
       // 2. Save Name Dynamically for the Header
-      localStorage.setItem("admin_name", response.user?.name || "Admin");
+      localStorage.setItem("admin_name", response.user?.fullName || "Admin");
 
       router.replace("/admin");
     } catch (requestError) {
@@ -169,7 +169,9 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
         <h1 className="text-2xl font-bold text-brand-heading">Admin Login</h1>
-        <p className="text-sm text-brand-muted mt-1">Sign in to manage your platform.</p>
+        <p className="text-sm text-brand-muted mt-1">
+          Sign in to manage your platform.
+        </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>

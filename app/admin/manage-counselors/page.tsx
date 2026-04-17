@@ -10,6 +10,7 @@ import {
   FileText,
   GraduationCapIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import AdminStatCard from "@/app/components/admin/AdminStatCard";
 import { AdminCounselor, adminApi } from "@/app/libs/adminApi";
 
@@ -70,7 +71,7 @@ export default function ManageCounselors() {
       );
     } catch (error) {
       console.error("Failed to load counselors:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to load counselors",
       );
     }
@@ -128,12 +129,14 @@ export default function ManageCounselors() {
       !form.email.trim() ||
       form.skills.length === 0
     ) {
-      alert("Name, email and at least one specialization are required");
+      toast.error("Name, email and at least one specialization are required");
       return;
     }
 
     if (!editingCounselor && form.password.trim().length < 6) {
-      alert("Please provide at least 6 characters for counselor password");
+      toast.error(
+        "Please provide at least 6 characters for counselor password",
+      );
       return;
     }
 
@@ -170,9 +173,14 @@ export default function ManageCounselors() {
       setEditingCounselor(null);
       setForm(initialForm);
       await loadData();
+      toast.success(
+        editingCounselor
+          ? "Counselor updated successfully"
+          : "Counselor added successfully",
+      );
     } catch (error) {
       console.error("Failed to save counselor:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to save counselor",
       );
     } finally {
@@ -190,9 +198,10 @@ export default function ManageCounselors() {
     try {
       await adminApi.deleteCounselor(id);
       await loadData();
+      toast.success("Counselor disabled successfully");
     } catch (error) {
       console.error("Failed to delete counselor:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to delete counselor",
       );
     }

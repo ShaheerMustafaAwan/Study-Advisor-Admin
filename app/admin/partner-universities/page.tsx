@@ -9,6 +9,7 @@ import {
   MapPin,
   Globe,
 } from "lucide-react";
+import { toast } from "sonner";
 import AdminStatCard from "@/app/components/admin/AdminStatCard";
 import { AdminUniversity, adminApi } from "@/app/libs/adminApi";
 
@@ -55,7 +56,7 @@ export default function PartneredUniversities() {
       setUniversities(response.universities || []);
     } catch (error) {
       console.error("Failed to load universities:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to load universities",
       );
     }
@@ -91,7 +92,7 @@ export default function PartneredUniversities() {
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.country.trim()) {
-      alert("University name and country are required");
+      toast.error("University name and country are required");
       return;
     }
 
@@ -125,9 +126,14 @@ export default function PartneredUniversities() {
       setOpen(false);
       setEditing(null);
       setForm(initialForm);
+      toast.success(
+        editing
+          ? "University updated successfully"
+          : "University added successfully",
+      );
     } catch (error) {
       console.error("Failed to save university:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to save university",
       );
     } finally {
@@ -162,9 +168,10 @@ export default function PartneredUniversities() {
     try {
       await adminApi.deleteUniversity(id);
       await loadUniversities();
+      toast.success("University deleted successfully");
     } catch (error) {
       console.error("Failed to delete university:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to delete university",
       );
     }
@@ -177,9 +184,10 @@ export default function PartneredUniversities() {
         partnershipNotes: uni.partnership_notes || undefined,
       });
       await loadUniversities();
+      toast.success("Partnership status updated");
     } catch (error) {
       console.error("Failed to toggle partnership:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to update partnership",
       );
     }

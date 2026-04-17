@@ -45,9 +45,11 @@ export default function AdminDashboard() {
     };
 
     load();
+    const intervalId = setInterval(load, 30000);
 
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -59,6 +61,7 @@ export default function AdminDashboard() {
       applications: summary?.applications.total || 0,
       documents: summary?.documents.total || 0,
       sop: summary?.sop.total || 0,
+      pendingConnections: summary?.connections.pendingRequests || 0,
     }),
     [summary],
   );
@@ -76,6 +79,7 @@ export default function AdminDashboard() {
         totalStudents={computed.students}
         totalDocuments={computed.documents}
         totalSops={computed.sop}
+        pendingConnections={computed.pendingConnections}
       />
 
       <QuickLinksCards />

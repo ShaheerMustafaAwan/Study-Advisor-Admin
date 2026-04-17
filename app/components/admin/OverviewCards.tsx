@@ -1,23 +1,26 @@
 "use client";
 
-import { Users, FileCheck, FileText, MessageSquare } from "lucide-react";
+import { Users, FileCheck, FileText, Bell } from "lucide-react";
 
 type OverviewCardsProps = {
   totalStudents: number;
   totalDocuments: number;
   totalSops: number;
+  pendingConnections: number;
 };
 
 function StatCard({
   title,
   value,
   percentage,
+  highlightLabel,
   icon,
   gradient,
 }: {
   title: string;
   value: number;
   percentage: number;
+  highlightLabel?: string;
   icon: React.ReactNode;
   gradient: string;
 }) {
@@ -32,7 +35,7 @@ function StatCard({
           <p className="text-sm opacity-80">{title}</p>
           <h2 className="text-3xl font-bold mt-2">{value}</h2>
           <div className="mt-3 inline-flex items-center bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
-            ↑ {percentage}% this month
+            {highlightLabel || `↑ ${percentage}% this month`}
           </div>
         </div>
 
@@ -48,9 +51,8 @@ export default function OverviewCards({
   totalStudents,
   totalDocuments,
   totalSops,
+  pendingConnections,
 }: OverviewCardsProps) {
-  const chatbotUsage = Math.max(0, Math.round(totalStudents * 0.35));
-
   /* ===== Dummy % Calculation (Replace later with real logic) ===== */
   const getRandomPercent = () => Math.floor(Math.random() * 25) + 5;
 
@@ -81,11 +83,12 @@ export default function OverviewCards({
       />
 
       <StatCard
-        title="Chatbot Usage"
-        value={chatbotUsage}
-        percentage={getRandomPercent()}
-        icon={<MessageSquare />}
-        gradient="from-orange-400 to-amber-600"
+        title="Pending Connections"
+        value={pendingConnections}
+        percentage={0}
+        highlightLabel="Needs review"
+        icon={<Bell />}
+        gradient="from-orange-500 to-red-500"
       />
     </div>
   );

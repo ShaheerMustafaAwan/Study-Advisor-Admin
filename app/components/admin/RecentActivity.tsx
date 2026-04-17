@@ -8,6 +8,21 @@ type ActivityItem = {
   type: "Student" | "Counselor" | "University" | "System" | "Document";
   message: string;
   time: string;
+  actor?: {
+    name: string;
+    email: string | null;
+    role: string;
+  };
+  subject?: {
+    name: string;
+    email: string | null;
+    role: string;
+  } | null;
+  target?: {
+    name: string;
+    email: string | null;
+    role: string;
+  } | null;
 };
 
 type RecentActivityProps = {
@@ -75,6 +90,29 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
                 <p className="text-sm font-medium text-slate-800">
                   {activity.message}
                 </p>
+                {activity.actor && (
+                  <p className="text-xs text-slate-600 mt-1">
+                    By {activity.actor.name}
+                    {activity.actor.email ? ` (${activity.actor.email})` : ""}
+                    {` • ${activity.actor.role}`}
+                  </p>
+                )}
+                {activity.subject && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Subject: {activity.subject.name}
+                    {activity.subject.email
+                      ? ` (${activity.subject.email})`
+                      : ""}
+                    {` • ${activity.subject.role}`}
+                  </p>
+                )}
+                {activity.target && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Target: {activity.target.name}
+                    {activity.target.email ? ` (${activity.target.email})` : ""}
+                    {` • ${activity.target.role}`}
+                  </p>
+                )}
                 <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
               </div>
             </div>
