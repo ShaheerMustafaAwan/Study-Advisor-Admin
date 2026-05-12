@@ -1,6 +1,12 @@
 import { Buffer } from "node:buffer";
 import type { Page, Route } from "@playwright/test";
 
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const configuredApiBase = configuredApiBaseUrl
+  ? new URL(configuredApiBaseUrl)
+  : null;
+const configuredApiPath = configuredApiBase?.pathname.replace(/\/+$/, "") || "";
+
 function buildUnsignedAdminJwt(): string {
   const enc = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   return `${enc({ alg: "none", typ: "JWT" })}.${enc({
@@ -16,11 +22,11 @@ const corsHeaders: Record<string, string> = {
 };
 
 function isBackendApi(url: URL): boolean {
-  const port = url.port || (url.protocol === "https:" ? "443" : "80");
-  return (
-    (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
-    port === "4000"
-  );
+  return Boolean(configuredApiBase && url.origin === configuredApiBase.origin);
+}
+
+function isApiPath(url: URL, path: string): boolean {
+  return url.pathname.replace(/\/$/, "") === `${configuredApiPath}${path}`;
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
@@ -87,7 +93,7 @@ const dashboardSummary = {
 export async function mockAdminLoginSuccess(page: Page) {
   await page.route(/auth\/login/i, async (route) => {
     const url = new URL(route.request().url());
-    if (!isBackendApi(url) || !/\/api\/auth\/login\/?$/i.test(url.pathname)) {
+    if (!isBackendApi(url) || !isApiPath(url, "/auth/login")) {
       await route.continue();
       return;
     }
@@ -118,7 +124,7 @@ export async function mockAdminLoginSuccess(page: Page) {
 export async function mockAdminLoginNonAdminRole(page: Page) {
   await page.route(/auth\/login/i, async (route) => {
     const url = new URL(route.request().url());
-    if (!isBackendApi(url) || !/\/api\/auth\/login\/?$/i.test(url.pathname)) {
+    if (!isBackendApi(url) || !isApiPath(url, "/auth/login")) {
       await route.continue();
       return;
     }
